@@ -1,0 +1,23 @@
+{
+  "version": "3.0",
+  "services": {
+    "web": {
+      "image": "nginx:latest",
+      "ports": ["80:80"],
+      "depends_on": ["db"],
+      "links": ["db:database"],
+      "environment": {
+        "DB_PASSWORD": "hardcoded-secret-123",
+        "DB_HOST": "localhost"
+      }
+    },
+    "db": {
+      "image": "postgres:13",
+      "environment": {
+        "POSTGRES_PASSWORD": "postgres-secret",
+        "POSTGRES_DB": "myapp"
+      },
+      "volumes": ["./data:/var/lib/postgresql/data"]
+    }
+  }
+} 
