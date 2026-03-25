@@ -1,70 +1,64 @@
 # Tightrope
 
-## Configuration Auditor
+**A fast and lightweight configuration auditor.**
 
-Tightrope is a Go-based configuration auditor that scans directories for config files and detects issues like key conflicts, shadowing, secrets in plain text, deprecated fields, and redundant values.
+Tightrope is a configuration auditor that helps you maintain clean and secure configurations. It scans your configuration files and identifies potential issues, such as conflicting keys, duplicate values, and secrets stored in plaintext.
 
-## Features
+## Key Features
 
-- **Audit Rules**: Detects key conflicts, shadowing, secrets in plain text, deprecated fields, and redundant values.
-- **File Formats**: Supports YAML, JSON, and TOML with line number extraction for YAML.
-- **Output Formats**: Markdown (default), JSON, and HTML.
-- **Enterprise Ready**: Cross-platform, performance-optimized, structured logging, and graceful error handling.
+- **Speed and Efficiency:** Tightrope is designed to be fast and lightweight, making it ideal for use in CI/CD pipelines and large-scale deployments.
+- **Comprehensive Auditing:** It performs a wide range of checks to ensure the integrity and security of your configurations.
+- **Flexible Output:** Tightrope supports multiple output formats, including JSON and Markdown, so you can easily integrate it with your existing tools and workflows.
+- **Customizable Rules:** You can extend Tightrope's functionality by adding your own custom rules to enforce organization-specific policies.
 
-## Quick Start
+## Getting Started
 
 ### Installation
 
+To install Tightrope, you'll need to have Go installed on your system. You can then install Tightrope by running the following command:
+
 ```bash
-git clone https://github.com/TFMV/tightrope.git
-cd tightrope
-go build -o tightrope ./cmd/tightrope
+go get -u github.com/TFMV/tightrope
 ```
 
 ### Usage
 
+To run Tightrope, simply specify the path to the directory containing your configuration files:
+
 ```bash
-./tightrope audit [--path PATH] [--format FORMAT] [--verbose]
-./tightrope version
+tightrope /path/to/your/configs
 ```
 
-## Architecture
+Tightrope will recursively scan the specified directory and generate a report of its findings.
 
-- `cmd/tightrope/main.go`: CLI entry point
-- `internal/audit/`: Audit engine and rules
-- `internal/fs/`: File system operations
-- `internal/parser/`: Configuration parsers
-- `internal/report/`: Report generation
-- `pkg/types.go`: Shared type definitions
-- `tests/`: Unit tests
-- `examples/`: Sample configuration files
+## CI/CD Integration
 
-## Audit Rules
+To integrate Tightrope into your CI/CD pipeline, you can use the following command:
 
-- **Key Conflicts**: Same key with different values across files.
-- **Shadowing**: Key repeated in nested scopes within a file.
-- **Secrets in Plain Text**: Potential secrets detected via patterns and key names.
-- **Deprecated Fields**: Known deprecated fields for Kubernetes, Docker, and Terraform.
-- **Redundant Values**: Identical key-value pairs across files.
+```bash
+tightrope --format=json /path/to/your/configs > report.json
+```
 
-## Testing
+This will generate a JSON report that you can then use to fail your build or trigger other actions in your pipeline.
 
-Run tests with `go test ./tests/`.
+## Rules
 
-## � roulette️ Configuration
+Tightrope includes a number of built-in rules that cover a wide range of common configuration issues. These rules include:
 
-- Command-line flags for path, format, and verbosity.
-- Environment variable `TIGHTROPE_LOG_LEVEL` for logging.
+- **Key Conflicts:** This rule checks for keys that are defined with different values in multiple files.
+- **Duplicate Values:** This rule checks for keys that have the same value as other keys in the same file.
+- **Secrets in Plaintext:** This rule checks for secrets that are stored in plaintext.
 
-## Development
+You can also create your own custom rules to enforce organization-specific policies.
 
-- Requires Go 1.21+.
-- Build with `go build -o tightrope ./cmd/tightrope`.
+## Contributing
 
-## Performance
-
-Optimized for memory efficiency and speed, handles large directories.
+We welcome contributions to Tightrope! If you'd like to contribute, please fork the repository and submit a pull request.
 
 ## License
 
-MIT License.
+Tightrope is licensed under the MIT License.
+
+## Contact
+
+If you have any questions or feedback, please feel free to contact us at [email protected]
