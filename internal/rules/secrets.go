@@ -28,7 +28,7 @@ func (r *SecretsInPlainRule) Check(configs []*pkg.ConfigData) ([]pkg.ReportEntry
 	var findings []pkg.ReportEntry
 
 	for _, config := range configs {
-		for key, lineNumber := range config.LineMap {
+		for key := range config.FlattenedData {
 			for _, pattern := range secretPatterns {
 				if pattern.MatchString(key) {
 					findings = append(findings, pkg.ReportEntry{
@@ -36,7 +36,7 @@ func (r *SecretsInPlainRule) Check(configs []*pkg.ConfigData) ([]pkg.ReportEntry
 						Severity:   pkg.Critical,
 						Rule:       pkg.RuleSecrets,
 						FilePath:   config.FilePath,
-						LineNumber: lineNumber,
+						LineNumber: getLineNumber(configs, config.FilePath, key),
 					})
 				}
 			}

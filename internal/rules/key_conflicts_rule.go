@@ -34,23 +34,26 @@ func (r *KeyConflictsRule) Check(configs []*pkg.ConfigData) ([]pkg.ReportEntry, 
 	for key, values := range keyValues {
 		if len(values) > 1 {
 			var conflictingValues []string
+			var firstFilePath string
 			for value, filePaths := range values {
+				if firstFilePath == "" && len(filePaths) > 0 {
+					firstFilePath = filePaths[0]
+				}
 				for _, filePath := range filePaths {
 					conflictingValues = append(conflictingValues, fmt.Sprintf("'%s' in %s", value, filePath))
 				}
 			}
 
-			for _, filePaths := range values {
-				for _, filePath := range filePaths {
-					lineNumber := getLineNumber(configs, filePath, key)
-					findings = append(findings, pkg.ReportEntry{
-						Message:  fmt.Sprintf("Key '%s' has conflicting values: %v", key, conflictingValues),
-						Rule:     pkg.RuleKeyConflict,
-						Severity: pkg.Warning,
-						FilePath: filePath,
-						LineNumber: lineNumber,
-					})
-				}
+			// Report one finding for the key conflict, associated with the first file found.
+			if firstFilePath != "" {
+				lineNumber := getLineNumber(configs, firstFilePath, key)
+				findings = append(findings, pkg.ReportEntry{
+					Message:  fmt.Sprintf("Key '%s' has conflicting values: %v", key, conflictingValues),
+					Rule:     pkg.RuleKeyConflict,
+					Severity: pkg.Warning,
+					FilePath: firstFilePath,
+					LineNumber: lineNumber,
+				})
 			}
 		}
 	}
