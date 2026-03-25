@@ -1,77 +1,99 @@
 package pkg
 
-import "time"
+import (
+	"fmt"
+	"strings"
+)
 
-// Severity levels for audit findings
+// Severity represents the severity of a finding.
 type Severity string
 
 const (
-	SeverityInfo     Severity = "Info"
-	SeverityWarning  Severity = "Warning"
-	SeverityCritical Severity = "Critical"
+	Critical Severity = "Critical"
+	Warning  Severity = "Warning"
+	Info     Severity = "Info"
+	Notice   Severity = "Notice"
 )
 
-// AuditRule represents the type of audit rule violated
+// AuditRule represents a specific audit rule.
 type AuditRule string
 
 const (
-	RuleKeyConflict    AuditRule = "Key Conflict"
-	RuleShadowing      AuditRule = "Shadowing"
-	RuleSecretsInPlain AuditRule = "Secrets in Plain Text"
-	RuleDeprecated     AuditRule = "Deprecated Fields"
-	RuleRedundant      AuditRule = "Redundant Values"
+	// RuleKeyConflict is a rule that checks for key conflicts.
+	RuleKeyConflict AuditRule = "KeyConflict"
+	// RuleRedundant is a rule that checks for redundant values.
+	RuleRedundant AuditRule = "RedundantValue"
+	// RuleDeprecated is a rule that checks for deprecated fields.
+	RuleDeprecated AuditRule = "DeprecatedField"
+	// RuleSecrets is a rule that checks for secrets in plain text.
+	RuleSecrets AuditRule = "SecretInPlainText"
+	// RuleShadowing is a rule that checks for key shadowing.
+	RuleShadowing AuditRule = "KeyShadowing"
+	// RuleCustom is a rule that checks for custom rule violations.
+	RuleCustom AuditRule = "Custom"
 )
 
-// ConfigData represents parsed configuration data
+// ConfigData holds the parsed data and metadata of a configuration file.
 type ConfigData struct {
-	FilePath string                 `json:"file_path"`
-	Format   string                 `json:"format"`
-	Data     map[string]interface{} `json:"data"`
-	LineMap  map[string]int         `json:"line_map,omitempty"` // Maps keys to line numbers
+	FilePath      string
+	FileType      string
+	FlattenedData map[string]interface{}
+	Data          map[string]interface{}
+	LineMap       map[string]int
 }
 
-// ReportEntry represents a single audit finding
-type ReportEntry struct {
-	FilePath       string    `json:"file_path"`
-	LineNumber     int       `json:"line_number"`
-	Rule           AuditRule `json:"rule"`
-	Message        string    `json:"message"`
-	Recommendation string    `json:"recommendation"`
-	Severity       Severity  `json:"severity"`
-	Key            string    `json:"key,omitempty"`
-	Value          string    `json:"value,omitempty"`
+// CustomRule defines a user-provided rule for the audit.
+type CustomRule struct {
+	Name     string   `yaml:"name"`
+	Pattern  string   `yaml:"pattern"`
+	Severity Severity `yaml:"severity"`
+	Message  string   `yaml:"message"`
 }
 
-// AuditReport contains all findings from an audit run
-type AuditReport struct {
-	Timestamp    time.Time     `json:"timestamp"`
-	ScanPath     string        `json:"scan_path"`
-	FilesScanned int           `json:"files_scanned"`
-	Findings     []ReportEntry `json:"findings"`
-	Summary      ReportSummary `json:"summary"`
-}
+// SupportedExtensions lists the file extensions that are parsed.
+var SupportedExtensions = []string{".yaml", ".yml", ".json", ".toml", ".tf"}
 
-// ReportSummary provides statistics about the audit
-type ReportSummary struct {
-	TotalFindings      int               `json:"total_findings"`
-	FindingsBySeverity map[Severity]int  `json:"findings_by_severity"`
-	FindingsByRule     map[AuditRule]int `json:"findings_by_rule"`
-}
+// Format represents the output format for the audit report.
+type Format string
 
-// AuditConfig holds configuration for the audit process
-type AuditConfig struct {
-	ScanPath       string
-	OutputFormat   string
-	IncludeSecrets bool
-	CustomRules    []string
-}
-
-// FileExtensions supported by tightrope
-var SupportedExtensions = []string{".yaml", ".yml", ".json", ".toml"}
-
-// OutputFormats supported by tightrope
 const (
-	FormatMarkdown = "markdown"
-	FormatJSON     = "json"
-	FormatHTML     = "html"
+	// FormatMarkdown is for human-readable Markdown reports.
+	FormatMarkdown Format = "markdown"
+	// FormatJSON is for machine-readable JSON reports.
+	FormatJSON Format = "json"
+	// FormatHTML is for interactive HTML reports.
+	FormatHTML Format = "html"
+	// FormatDot is for graph-based DOT reports.
+	FormatDot Format = "dot"
 )
+
+// IsValid checks if the format is a supported one.
+func (f Format) IsValid() bool {
+	switch f {
+	case FormatMarkdown, FormatJSON, FormatHTML, FormatDot:
+		return true
+	default:
+		return false
+	}
+}
+
+// ToLower returns the lowercase string representation of the format.
+func (f Format) ToLower() string {
+	return strings.ToLower(string(f))
+}
+
+// String returns the string representation of the format.
+func (f Format) String() string {
+	return string(f)
+}
+
+// Set is used by command-line flag parsing to set the format.
+func (f *Format) Set(value string) error {
+	lowerVal := strings.ToLower(value)
+	newFormat := Format(lowerVal)
+	if !newFormat.IsValid() {
+		return fmt.Errorf("invalid format: %s", value)
+	}
+	*f = newFormat
+	return nil
+}

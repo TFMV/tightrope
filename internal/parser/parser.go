@@ -34,26 +34,21 @@ func (p *Parser) ParseFile(filePath string) (*pkg.ConfigData, error) {
 	}
 	defer file.Close()
 
-	content, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
-	}
-
 	ext := strings.ToLower(filepath.Ext(filePath))
 
 	configData := &pkg.ConfigData{
 		FilePath: filePath,
-		Format:   ext,
+		FileType: ext,
 		LineMap:  make(map[string]int),
 	}
 
 	switch ext {
 	case ".yaml", ".yml":
-		err = p.parseYAML(content, configData)
+		err = p.parseYAML(file, configData)
 	case ".json":
-		err = p.parseJSON(content, configData)
+		err = p.parseJSON(file, configData)
 	case ".toml":
-		err = p.parseTOML(content, configData)
+		err = p.parseTOML(file, configData)
 	default:
 		return nil, fmt.Errorf("unsupported file format: %s", ext)
 	}
@@ -67,6 +62,9 @@ func (p *Parser) ParseFile(filePath string) (*pkg.ConfigData, error) {
 		return nil, err
 	}
 
+	// Flatten the data once after parsing
+	configData.FlattenedData = FlattenMap(configData.Data, "")
+
 	p.logger.Debug().
 		Str("file", filePath).
 		Str("format", ext).
@@ -77,9 +75,9 @@ func (p *Parser) ParseFile(filePath string) (*pkg.ConfigData, error) {
 }
 
 // parseYAML parses YAML content and extracts line numbers
-func (p *Parser) parseYAML(content []byte, configData *pkg.ConfigData) error {
+func (p *Parser) parseYAML(reader io.Reader, configData *pkg.ConfigData) error {
 	var yamlNode yaml.Node
-	if err := yaml.Unmarshal(content, &yamlNode); err != nil {
+	if err := yaml.NewDecoder(reader).Decode(&yamlNode); err != nil {
 		return fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
@@ -123,9 +121,9 @@ func (p *Parser) extractYAMLLines(node *yaml.Node, prefix string, lineMap map[st
 }
 
 // parseJSON parses JSON content
-func (p *Parser) parseJSON(content []byte, configData *pkg.ConfigData) error {
+func (p *Parser) parseJSON(reader io.Reader, configData *pkg.ConfigData) error {
 	var data map[string]interface{}
-	if err := json.Unmarshal(content, &data); err != nil {
+	if err := json.NewDecoder(reader).Decode(&data); err != nil {
 		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
@@ -138,9 +136,9 @@ func (p *Parser) parseJSON(content []byte, configData *pkg.ConfigData) error {
 }
 
 // parseTOML parses TOML content
-func (p *Parser) parseTOML(content []byte, configData *pkg.ConfigData) error {
+func (p *Parser) parseTOML(reader io.Reader, configData *pkg.ConfigData) error {
 	var data map[string]interface{}
-	if err := toml.Unmarshal(content, &data); err != nil {
+	if err := toml.NewDecoder(reader).Decode(&data); err != nil {
 		return fmt.Errorf("failed to parse TOML: %w", err)
 	}
 

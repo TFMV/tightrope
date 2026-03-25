@@ -28,12 +28,14 @@ func NewGenerator() *Generator {
 // GenerateReport generates a report in the specified format
 func (g *Generator) GenerateReport(report *pkg.AuditReport, format string) (string, error) {
 	switch format {
-	case pkg.FormatMarkdown:
+	case pkg.FormatMarkdown.ToLower():
 		return g.generateMarkdown(report)
-	case pkg.FormatJSON:
+	case pkg.FormatJSON.ToLower():
 		return g.generateJSON(report)
-	case pkg.FormatHTML:
+	case pkg.FormatHTML.ToLower():
 		return g.generateHTML(report)
+	case pkg.FormatDot.ToLower():
+		return g.generateDot(report)
 	default:
 		return "", fmt.Errorf("unsupported format: %s", format)
 	}
@@ -90,14 +92,6 @@ func (g *Generator) generateMarkdown(report *pkg.AuditReport) (string, error) {
 
 				buf.WriteString(fmt.Sprintf("#### %s %s%s\n", emoji, finding.Rule, lineInfo))
 				buf.WriteString(fmt.Sprintf("**Message:** %s\n\n", finding.Message))
-				buf.WriteString(fmt.Sprintf("**Recommendation:** %s\n\n", finding.Recommendation))
-
-				if finding.Key != "" {
-					buf.WriteString(fmt.Sprintf("**Key:** `%s`\n", finding.Key))
-				}
-				if finding.Value != "" {
-					buf.WriteString(fmt.Sprintf("**Value:** `%s`\n", finding.Value))
-				}
 				buf.WriteString("---\n\n")
 			}
 		}
@@ -125,10 +119,10 @@ func (g *Generator) generateJSON(report *pkg.AuditReport) (string, error) {
 // generateHTML creates an HTML report
 func (g *Generator) generateHTML(report *pkg.AuditReport) (string, error) {
 	tmpl := `<!DOCTYPE html>
-<html lang="en">
+<html lang=\"en\">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
     <title>Tightrope Configuration Audit Report</title>
     <style>
         body {
@@ -250,19 +244,6 @@ func (g *Generator) generateHTML(report *pkg.AuditReport) (string, error) {
             margin: 15px 0;
             font-size: 1.05em;
         }
-        .finding-recommendation {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 15px 0;
-            border-left: 3px solid #28a745;
-        }
-        .finding-details {
-            margin-top: 15px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.9em;
-            color: #6c757d;
-        }
         .no-findings {
             text-align: center;
             padding: 60px 20px;
@@ -302,43 +283,43 @@ func (g *Generator) generateHTML(report *pkg.AuditReport) (string, error) {
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class=\"header\">
         <h1>🔍 Configuration Audit Report</h1>
-        <div class="meta">
-            <div><strong>Generated:</strong> {{.Timestamp.Format "2006-01-02 15:04:05 UTC"}}</div>
+        <div class=\"meta\">
+            <div><strong>Generated:</strong> {{.Timestamp.Format \"2006-01-02 15:04:05 UTC\"}}</div>
             <div><strong>Scan Path:</strong> {{.ScanPath}}</div>
             <div><strong>Files Scanned:</strong> {{.FilesScanned}}</div>
         </div>
     </div>
 
-    <div class="summary">
-        <div class="summary-card">
+    <div class=\"summary\">
+        <div class=\"summary-card\">
             <h3>📊 Overview</h3>
-            <div class="stat-item">
-                <div class="stat-count">{{.Summary.TotalFindings}}</div>
-                <div class="stat-label">Total Findings</div>
+            <div class=\"stat-item\">
+                <div class=\"stat-count\">{{.Summary.TotalFindings}}</div>
+                <div class=\"stat-label\">Total Findings</div>
             </div>
         </div>
         
-        <div class="summary-card">
+        <div class=\"summary-card\">
             <h3>🚨 By Severity</h3>
-            <div class="stats-grid">
+            <div class=\"stats-grid\">
                 {{range $severity, $count := .Summary.FindingsBySeverity}}
-                <div class="stat-item">
-                    <div class="stat-count">{{$count}}</div>
-                    <div class="stat-label">{{$severity}}</div>
+                <div class=\"stat-item\">
+                    <div class=\"stat-count\">{{$count}}</div>
+                    <div class=\"stat-label\">{{$severity}}</div>
                 </div>
                 {{end}}
             </div>
         </div>
         
-        <div class="summary-card">
+        <div class=\"summary-card\">
             <h3>🔍 By Rule Type</h3>
-            <div class="stats-grid">
+            <div class=\"stats-grid\">
                 {{range $rule, $count := .Summary.FindingsByRule}}
-                <div class="stat-item">
-                    <div class="stat-count">{{$count}}</div>
-                    <div class="stat-label">{{$rule}}</div>
+                <div class=\"stat-item\">
+                    <div class=\"stat-count\">{{$count}}</div>
+                    <div class=\"stat-label\">{{$rule}}</div>
                 </div>
                 {{end}}
             </div>
@@ -346,45 +327,36 @@ func (g *Generator) generateHTML(report *pkg.AuditReport) (string, error) {
     </div>
 
     {{if gt .Summary.TotalFindings 0}}
-    <div class="findings">
+    <div class=\"findings\">
         <h2>🚨 Detailed Findings</h2>
         {{range $filePath, $findings := .GroupedFindings}}
-        <div class="file-section">
-            <div class="file-title">📄 {{$filePath}}</div>
+        <div class=\"file-section\">
+            <div class=\"file-title\">📄 {{$filePath}}</div>
             {{range $findings}}
-            <div class="finding {{.SeverityClass}}">
-                <div class="finding-header">
-                    <span class="severity-badge severity-{{.SeverityClass}}">{{.Severity}}</span>
-                    <span class="finding-rule">{{.Rule}}</span>
+            <div class=\"finding {{.SeverityClass}}\">
+                <div class=\"finding-header\">
+                    <span class=\"severity-badge severity-{{.SeverityClass}}\">{{.Severity}}</span>
+                    <span class=\"finding-rule\">{{.Rule}}</span>
                     {{if gt .LineNumber 0}}
-                    <span class="finding-line">(Line {{.LineNumber}})</span>
+                    <span class=\"finding-line\"> (Line {{.LineNumber}})</span>
                     {{end}}
                 </div>
-                <div class="finding-message">{{.Message}}</div>
-                <div class="finding-recommendation">
-                    <strong>💡 Recommendation:</strong> {{.Recommendation}}
-                </div>
-                {{if .Key}}
-                <div class="finding-details">
-                    <strong>Key:</strong> {{.Key}}
-                    {{if .Value}}<br><strong>Value:</strong> {{.Value}}{{end}}
-                </div>
-                {{end}}
+                <div class=\"finding-message\">{{.Message}}</div>
             </div>
             {{end}}
         </div>
         {{end}}
     </div>
     {{else}}
-    <div class="findings">
-        <div class="no-findings">
+    <div class=\"findings\">
+        <div class=\"no-findings\">
             <h2>✅ All Clear!</h2>
             <p>No configuration issues were detected in the scanned files.</p>
         </div>
     </div>
     {{end}}
 
-    <div class="footer">
+    <div class=\"footer\">
         Generated by Tightrope Configuration Auditor
     </div>
 </body>
@@ -436,13 +408,62 @@ func (g *Generator) generateHTML(report *pkg.AuditReport) (string, error) {
 // getSeverityEmoji returns an emoji for the given severity level
 func (g *Generator) getSeverityEmoji(severity pkg.Severity) string {
 	switch severity {
-	case pkg.SeverityCritical:
+	case pkg.Critical:
 		return "🚨"
-	case pkg.SeverityWarning:
+	case pkg.Warning:
 		return "⚠️"
-	case pkg.SeverityInfo:
+	case pkg.Info:
+		return "ℹ️"
+	case pkg.Notice:
 		return "ℹ️"
 	default:
 		return "❓"
+	}
+}
+
+// generateDot creates a DOT graph report from the audit findings.
+func (g *Generator) generateDot(report *pkg.AuditReport) (string, error) {
+	var buf bytes.Buffer
+	buf.WriteString("digraph TightropeAudit {\n")
+	buf.WriteString("  rankdir=LR;\n")
+	buf.WriteString("  node [shape=box, style=\"rounded,filled\"];\n\n")
+
+	// Group findings by file
+	fileFindings := make(map[string][]pkg.ReportEntry)
+	for _, finding := range report.Findings {
+		fileFindings[finding.FilePath] = append(fileFindings[finding.FilePath], finding)
+	}
+
+	for filePath, findings := range fileFindings {
+		// Define file node
+		buf.WriteString(fmt.Sprintf("  \"%s\" [fillcolor=lightblue];\n", filePath))
+
+		for i, finding := range findings {
+			// Define finding node
+			findingID := fmt.Sprintf("finding_%s_%d", strings.ReplaceAll(filePath, "/", "_"), i)
+			findingLabel := fmt.Sprintf("Rule: %s\\n%s", finding.Rule, finding.Message)
+			color := g.getSeverityColor(finding.Severity)
+			buf.WriteString(fmt.Sprintf("  \"%s\" [label=\"%s\", fillcolor=\"%s\"];\n", findingID, findingLabel, color))
+
+			// Edge from file to finding
+			buf.WriteString(fmt.Sprintf("  \"%s\" -> \"%s\";\n", filePath, findingID))
+		}
+	}
+
+	buf.WriteString("}\n")
+	return buf.String(), nil
+}
+
+// getSeverityColor returns a color for the given severity level
+func (g *Generator) getSeverityColor(severity pkg.Severity) string {
+	switch severity {
+	case pkg.Critical:
+		return "red"
+	case pkg.Warning:
+		return "orange"
+	case pkg.Info, pkg.Notice:
+		return "yellow"
+	default:
+		return "lightgrey"
 	}
 }
