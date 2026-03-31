@@ -31,6 +31,12 @@ const (
 	RuleShadowing AuditRule = "KeyShadowing"
 	// RuleCustom is a rule that checks for custom rule violations.
 	RuleCustom AuditRule = "Custom"
+	// RuleSuspiciousValue is a rule that checks for suspicious values.
+	RuleSuspiciousValue AuditRule = "SuspiciousValue"
+	// RuleHardcodedIP is a rule that checks for hardcoded IP addresses.
+	RuleHardcodedIP AuditRule = "HardcodedIP"
+	// RuleInsecureURL is a rule that checks for insecure URLs (HTTP instead of HTTPS).
+	RuleInsecureURL AuditRule = "InsecureURL"
 )
 
 // ConfigData holds the parsed data and metadata of a configuration file.
@@ -51,7 +57,7 @@ type CustomRule struct {
 }
 
 // SupportedExtensions lists the file extensions that are parsed.
-var SupportedExtensions = []string{".yaml", ".yml", ".json", ".toml", ".tf"}
+var SupportedExtensions = []string{".yaml", ".yml", ".json", ".toml", ".tf", ".env", ".properties", ".ini", ".xml", "Dockerfile"}
 
 // Format represents the output format for the audit report.
 type Format string

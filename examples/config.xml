@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <app>
+        <name>MyApplication</name>
+        <version>1.0.0</version>
+        <debug>true</debug>
+    </app>
+    <database>
+        <host>localhost</host>
+        <port>5432</port>
+        <username>admin</username>
+        <password>db_secret_password</password>
+        <url>jdbc:postgresql://localhost:5432/mydb</url>
+    </database>
+    <api>
+        <endpoint>https://api.example.com</endpoint>
+        <key>sk_live_api_key_12345</key>
+        <secret>api_secret_value_xyz</secret>
+    </api>
+    <security>
+        <jwt_secret>jwt-secret-key-123</jwt_secret>
+        <encryption_key>my-encryption-key-456</encryption_key>
+    </security>
+</configuration>

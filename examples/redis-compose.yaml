@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass "supersecretpassword"
+    environment:
+      REDIS_PASSWORD: "another-secret-pass"
+      SECRET_KEY: "my-private-key"

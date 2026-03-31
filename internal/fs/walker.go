@@ -32,6 +32,10 @@ func NewWalker() *Walker {
 func (w *Walker) Walk(rootPath string) ([]string, error) {
 	var configFiles []string
 
+	specialFiles := map[string]bool{
+		"Dockerfile": true,
+	}
+
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			w.logger.Warn().
@@ -58,6 +62,17 @@ func (w *Walker) Walk(rootPath string) ([]string, error) {
 			w.logger.Debug().
 				Str("file", path).
 				Str("extension", ext).
+				Msg("Found configuration file")
+			return nil
+		}
+
+		// Check for special filenames like Dockerfile
+		baseName := filepath.Base(path)
+		if specialFiles[baseName] {
+			configFiles = append(configFiles, path)
+			w.logger.Debug().
+				Str("file", path).
+				Str("extension", baseName).
 				Msg("Found configuration file")
 		}
 

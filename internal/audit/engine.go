@@ -35,6 +35,15 @@ func NewEngine(customRules []*custom_rules.CustomRule) (*Engine, error) {
 	if err := registry.Register(rules.NewDeprecatedFieldsRule()); err != nil {
 		return nil, err
 	}
+	if err := registry.Register(&rules.SuspiciousValueRule{}); err != nil {
+		return nil, err
+	}
+	if err := registry.Register(&rules.HardcodedIPRule{}); err != nil {
+		return nil, err
+	}
+	if err := registry.Register(&rules.InsecureURLRule{}); err != nil {
+		return nil, err
+	}
 
 	engine := &Engine{
 		logger:       zerolog.New(os.Stderr).With().Timestamp().Logger(),

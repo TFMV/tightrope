@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: production
+data:
+  database_url: "postgres://prod-db:5432"
+  debug: "false"
+  max_connections: "100"
+  timeout: "30"
+  api_key: "sk-prod-1234567890abcdef"
+  secret_token: "my-secret-token-abc123"
