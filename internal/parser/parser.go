@@ -2,6 +2,7 @@ package parser
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"os"
@@ -36,6 +37,13 @@ func (p *Parser) ParseFile(filePath string) (*pkg.ConfigData, error) {
 
 	ext := strings.ToLower(filepath.Ext(filePath))
 
+	if ext == "" {
+		baseName := filepath.Base(filePath)
+		if baseName == "Dockerfile" {
+			ext = "Dockerfile"
+		}
+	}
+
 	configData := &pkg.ConfigData{
 		FilePath: filePath,
 		FileType: ext,
@@ -49,6 +57,16 @@ func (p *Parser) ParseFile(filePath string) (*pkg.ConfigData, error) {
 		err = p.parseJSON(file, configData)
 	case ".toml":
 		err = p.parseTOML(file, configData)
+	case ".env":
+		err = p.parseEnv(file, configData)
+	case ".properties":
+		err = p.parseProperties(file, configData)
+	case ".ini":
+		err = p.parseINI(file, configData)
+	case ".xml":
+		err = p.parseXML(file, configData)
+	case "Dockerfile":
+		err = p.parseDockerfile(file, configData)
 	default:
 		return nil, fmt.Errorf("unsupported file format: %s", ext)
 	}
@@ -146,6 +164,234 @@ func (p *Parser) parseTOML(reader io.Reader, configData *pkg.ConfigData) error {
 
 	// TODO:TOML doesn't provide line numbers easily with this library
 	// In a production system, we might use a different TOML parser that preserves line info
+
+	return nil
+}
+
+// parseEnv parses .env file content (KEY=VALUE format)
+func (p *Parser) parseEnv(reader io.Reader, configData *pkg.ConfigData) error {
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read env file: %w", err)
+	}
+
+	data := make(map[string]interface{})
+	lines := strings.Split(string(content), "\n")
+	lineNum := 1
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if line == "" || strings.HasPrefix(line, "#") {
+			lineNum++
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+
+			value = strings.Trim(value, `"`)
+			value = strings.Trim(value, `'`)
+
+			data[key] = value
+			configData.LineMap[key] = lineNum
+		}
+		lineNum++
+	}
+
+	configData.Data = data
+	return nil
+}
+
+// parseProperties parses Java properties file content
+func (p *Parser) parseProperties(reader io.Reader, configData *pkg.ConfigData) error {
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read properties file: %w", err)
+	}
+
+	data := make(map[string]interface{})
+	lines := strings.Split(string(content), "\n")
+	lineNum := 1
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "!") {
+			lineNum++
+			continue
+		}
+
+		if strings.Contains(line, "=") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				data[key] = value
+				configData.LineMap[key] = lineNum
+			}
+		}
+		lineNum++
+	}
+
+	configData.Data = data
+	return nil
+}
+
+// parseINI parses INI file content
+func (p *Parser) parseINI(reader io.Reader, configData *pkg.ConfigData) error {
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read INI file: %w", err)
+	}
+
+	data := make(map[string]interface{})
+	lines := strings.Split(string(content), "\n")
+	currentSection := ""
+	lineNum := 1
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			lineNum++
+			continue
+		}
+
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			currentSection = strings.Trim(line, "[]")
+			lineNum++
+			continue
+		}
+
+		if strings.Contains(line, "=") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+
+				fullKey := key
+				if currentSection != "" {
+					fullKey = currentSection + "." + key
+				}
+
+				if _, exists := data[fullKey]; exists {
+					lineMapKey := fmt.Sprintf("%s_2", fullKey)
+					data[fullKey] = value
+					configData.LineMap[lineMapKey] = lineNum
+				} else {
+					data[fullKey] = value
+					configData.LineMap[fullKey] = lineNum
+				}
+			}
+		}
+		lineNum++
+	}
+
+	configData.Data = data
+	return nil
+}
+
+// parseXML parses XML file content
+func (p *Parser) parseXML(reader io.Reader, configData *pkg.ConfigData) error {
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read XML file: %w", err)
+	}
+
+	decoder := xml.NewDecoder(strings.NewReader(string(content)))
+	data := make(map[string]interface{})
+
+	type StackItem struct {
+		prefix string
+	}
+
+	var stack []StackItem
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return fmt.Errorf("failed to parse XML: %w", err)
+		}
+
+		switch elem := token.(type) {
+		case xml.StartElement:
+			var newPrefix string
+			if len(stack) == 0 {
+				newPrefix = elem.Name.Local
+			} else {
+				newPrefix = stack[len(stack)-1].prefix + "." + elem.Name.Local
+			}
+			stack = append(stack, StackItem{prefix: newPrefix})
+
+			for _, attr := range elem.Attr {
+				key := newPrefix + "." + attr.Name.Local
+				data[key] = attr.Value
+			}
+
+		case xml.CharData:
+			text := strings.TrimSpace(string(elem))
+			if text != "" && len(stack) > 0 {
+				currentPrefix := stack[len(stack)-1].prefix
+				data[currentPrefix] = text
+			}
+
+		case xml.EndElement:
+			if len(stack) > 0 {
+				stack = stack[:len(stack)-1]
+			}
+		}
+	}
+
+	configData.Data = data
+	return nil
+}
+
+// parseDockerfile parses Dockerfile content
+func (p *Parser) parseDockerfile(reader io.Reader, configData *pkg.ConfigData) error {
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read Dockerfile: %w", err)
+	}
+
+	data := make(map[string]interface{})
+	lines := strings.Split(string(content), "\n")
+	envVars := make(map[string]string)
+	instructions := []string{}
+	lineNum := 1
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if line == "" || strings.HasPrefix(line, "#") {
+			lineNum++
+			continue
+		}
+
+		instructions = append(instructions, line)
+
+		if strings.HasPrefix(strings.ToUpper(line), "ENV ") {
+			rest := strings.TrimPrefix(line, "ENV ")
+			parts := strings.SplitN(rest, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				value = strings.Trim(value, `"`)
+				envVars[key] = value
+				data["env."+key] = value
+				configData.LineMap["env."+key] = lineNum
+			}
+		}
+		lineNum++
+	}
+
+	data["instructions"] = strings.Join(instructions, "\n")
+	configData.Data = data
 
 	return nil
 }
